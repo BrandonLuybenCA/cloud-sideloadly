@@ -6,30 +6,23 @@ jobs:
   discovery:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
-      - name: Setup Tools
+      - uses: actions/checkout@v4
+      - name: Install System Dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y libimobiledevice-utils jq curl socat strongswan
+          sudo apt-get install -y libimobiledevice-utils jq curl socat
+      - name: Install netmuxd
+        run: |
           curl -L -o netmuxd https://github.com/jkcoxson/netmuxd/releases/download/v0.1.4/x86_64-linux-netmuxd
           sudo mv netmuxd /usr/local/bin/
           sudo chmod +x /usr/local/bin/netmuxd
-          
       - name: Start VPN Server
         run: sudo bash scripts/setup_vpn.sh
-
-      - name: Start Tunnel Manager
+      - name: Start Tunnel and Capture URL
         run: |
-          # Start the TCP-to-UDP bridge in the background
           sudo socat TCP4-LISTEN:5000,fork UDP4:localhost:500 &
-          # Run the Python manager to handle SSH and URL capture
           python3 scripts/tunnel_manager.py
-
-      - name: Discovery Loop
+      - name: UDID Discovery Loop
         run: |
-          # Start netmuxd scanning the virtual VPN subnet
-          for i in {1..10}; do
-            sudo netmuxd --host 10.10.10.$i &
-          done
-          # Wait for device connection
+          for i in {1..10}; do sudo netmuxd --host 10.10.10.$i & done
           python3 scripts/discovery.py
