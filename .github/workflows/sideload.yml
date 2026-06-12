@@ -35,13 +35,12 @@ jobs:
           warp-cli --accept-tos register
           warp-cli --accept-tos connect
           
-      - name: Setup Ngrok
+      - name: Start Pinggy Tunnel
         run: |
-          curl -s https://ngrok-agent.s3.amazonaws.com/ngrok.asc | sudo tee /etc/apt/trusted.gpg.d/ngrok.asc >/dev/null
-          echo "deb https://ngrok-agent.s3.amazonaws.com buster main" | sudo tee /etc/apt/sources.list.d/ngrok.list
-          sudo apt update && sudo apt install ngrok
-          ngrok config add-authtoken ${{ secrets.NGROK_TOKEN }}
-          ngrok tcp 500 &
+          ssh -o StrictHostKeyChecking=no -R0:localhost:500 tcp@a.pinggy.io > pinggy.log 2>&1 &
+          sleep 15
+          PINGGY_URL=$(grep -oE "[a-z0-9]+\.a\.pinggy\.link:[0-9]+" pinggy.log | head -n 1)
+          echo "CONNECT VPN TO: $PINGGY_URL"
           
       - name: Start VPN
         run: sudo bash scripts/setup_vpn.sh

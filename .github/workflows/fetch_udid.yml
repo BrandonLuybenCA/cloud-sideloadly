@@ -12,7 +12,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y libimobiledevice-utils strongswan jq curl
           
-          # Fix netmuxd download
+          # Install netmuxd
           curl -L -o netmuxd https://github.com/jkcoxson/netmuxd/releases/download/v0.1.4/x86_64-linux-netmuxd
           sudo mv netmuxd /usr/local/bin/
           sudo chmod +x /usr/local/bin/netmuxd
@@ -20,24 +20,30 @@ jobs:
       - name: Start VPN
         run: sudo bash scripts/setup_vpn.sh
 
-      - name: Start Ngrok
+      - name: Start Pinggy Tunnel
         run: |
-          curl -s https://ngrok-agent.s3.amazonaws.com/ngrok.asc | sudo tee /etc/apt/trusted.gpg.d/ngrok.asc >/dev/null
-          echo "deb https://ngrok-agent.s3.amazonaws.com buster main" | sudo tee /etc/apt/sources.list.d/ngrok.list
-          sudo apt update && sudo apt install ngrok
-          # Use Secret for Ngrok token
-          ngrok config add-authtoken ${{ secrets.NGROK_TOKEN }}
-          ngrok tcp 500 --log=stdout > ngrok.log &
-          sleep 10
-          NGROK_URL=$(curl -s http://localhost:4040/api/tunnels | jq -r '.tunnels[0].public_url')
-          CLEAN_URL=$(echo $NGROK_URL | sed 's/tcp:\/\///')
-          HOST=$(echo $CLEAN_URL | cut -d: -f1)
+          # Start Pinggy TCP tunnel for VPN (port 500)
+          # We use a temporary file to capture the URL
+          ssh -o StrictHostKeyChecking=no -R0:localhost:500 tcp@a.pinggy.io > pinggy.log 2>&1 &
+          sleep 15
+          # Capture the assigned URL from the log
+          PINGGY_URL=$(grep -oE "[a-z0-9]+\.a\.pinggy\.link:[0-9]+" pinggy.log | head -n 1)
           
+          if [ -z "$PINGGY_URL" ]; then
+            echo "Failed to get Pinggy URL. Retrying with alternative capture..."
+            # Try capturing from full log if short grep fails
+            PINGGY_URL=$(cat pinggy.log | grep -o '.*\.a\.pinggy\.link:[0-9]*')
+          fi
+
           echo "--------------------------------------------------"
           echo "STEP 1: OPEN IPHONE SETTINGS > VPN > ADD CONFIG"
-          echo "SERVER: $HOST"
+          echo "TYPE: IKEv2"
+          echo "DESCRIPTION: Sideloadly"
+          echo "SERVER: $PINGGY_URL"
           echo "REMOTE ID: @sideloadly-runner"
           echo "LOCAL ID: @client"
+          echo "USER AUTHENTICATION: None"
+          echo "MACHINE AUTHENTICATION: Shared Secret"
           echo "SHARED SECRET: sideloadly123"
           echo "--------------------------------------------------"
 
