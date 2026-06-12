@@ -12,9 +12,8 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y libimobiledevice-utils strongswan jq curl
           
-          # Install netmuxd binary
-          curl -LO https://github.com/jkcoxson/netmuxd/releases/latest/download/netmuxd-x86_64-unknown-linux-gnu.tar.gz
-          tar -xzf netmuxd-x86_64-unknown-linux-gnu.tar.gz
+          # Fix netmuxd download
+          curl -L -o netmuxd https://github.com/jkcoxson/netmuxd/releases/download/v0.1.4/x86_64-linux-netmuxd
           sudo mv netmuxd /usr/local/bin/
           sudo chmod +x /usr/local/bin/netmuxd
           
@@ -26,7 +25,8 @@ jobs:
           curl -s https://ngrok-agent.s3.amazonaws.com/ngrok.asc | sudo tee /etc/apt/trusted.gpg.d/ngrok.asc >/dev/null
           echo "deb https://ngrok-agent.s3.amazonaws.com buster main" | sudo tee /etc/apt/sources.list.d/ngrok.list
           sudo apt update && sudo apt install ngrok
-          ngrok config add-authtoken 3F04f0qQaW68FVs9RAmoV0urkni_4ss21AMnPXEEEZq6GZw6t
+          # Use Secret for Ngrok token
+          ngrok config add-authtoken ${{ secrets.NGROK_TOKEN }}
           ngrok tcp 500 --log=stdout > ngrok.log &
           sleep 10
           NGROK_URL=$(curl -s http://localhost:4040/api/tunnels | jq -r '.tunnels[0].public_url')
@@ -35,13 +35,9 @@ jobs:
           
           echo "--------------------------------------------------"
           echo "STEP 1: OPEN IPHONE SETTINGS > VPN > ADD CONFIG"
-          echo "TYPE: IKEv2"
-          echo "DESCRIPTION: Sideloadly"
           echo "SERVER: $HOST"
           echo "REMOTE ID: @sideloadly-runner"
           echo "LOCAL ID: @client"
-          echo "USER AUTHENTICATION: None"
-          echo "MACHINE AUTHENTICATION: Shared Secret"
           echo "SHARED SECRET: sideloadly123"
           echo "--------------------------------------------------"
 
