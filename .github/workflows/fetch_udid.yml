@@ -18,11 +18,19 @@ jobs:
           sudo chmod +x /usr/local/bin/netmuxd
       - name: Start VPN Server
         run: sudo bash scripts/setup_vpn.sh
-      - name: Start Tunnel and Capture URL
+      - name: Start Tunnel and Bridge
         run: |
-          sudo socat TCP4-LISTEN:5000,fork UDP4:localhost:500 &
+          # Bridge TCP 5000 (from tunnel) to UDP 500 (VPN)
+          sudo socat TCP4-LISTEN:5000,fork,reuseaddr UDP4:localhost:500 &
+          # Bridge TCP 4500 (alt) to UDP 4500 (VPN)
+          sudo socat TCP4-LISTEN:4501,fork,reuseaddr UDP4:localhost:4500 &
           python3 scripts/tunnel_manager.py
       - name: UDID Discovery Loop
         run: |
-          for i in {1..10}; do sudo netmuxd --host 10.10.10.$i & done
-          python3 scripts/discovery.py
+          # Wait for connection
+          echo "[*] Waiting for iPhone to connect to VPN..."
+          for i in {1..20}; do
+            # Use a slightly more targeted netmuxd scan
+            sudo netmuxd --host 10.10.10.1 &
+            python3 scripts/discovery.py && break || sleep 5
+          done

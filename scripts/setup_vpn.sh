@@ -29,5 +29,4 @@ VPN_SEC
 
 echo "[*] Restarting StrongSwan..."
 sudo ipsec restart
-sleep 5
-sudo ipsec statusall || true
+sleep 2
