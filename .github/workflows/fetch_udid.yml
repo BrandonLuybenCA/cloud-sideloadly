@@ -7,45 +7,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Install System Dependencies
+      - name: Install Dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y libimobiledevice-utils jq curl socat
-      - name: Install netmuxd
-        run: |
+          sudo apt-get install -y libimobiledevice-utils jq curl socat strongswan strongswan-pki libcharon-extra-plugins libcharon-extauth-plugins
           curl -L -o netmuxd https://github.com/jkcoxson/netmuxd/releases/download/v0.1.4/x86_64-linux-netmuxd
           sudo mv netmuxd /usr/local/bin/
           sudo chmod +x /usr/local/bin/netmuxd
-      - name: Start VPN Server
-        run: sudo bash scripts/setup_vpn.sh
-      - name: Unified Tunnel and Discovery
+      - name: Run Engine
         run: |
-          # 1. Start Bridges in background
-          sudo socat TCP4-LISTEN:5000,fork,reuseaddr UDP4:localhost:500 &
-          sudo socat TCP4-LISTEN:4501,fork,reuseaddr UDP4:localhost:4500 &
-          
-          # 2. Start Tunnel Manager in background
-          python3 scripts/tunnel_manager.py > tunnel.log 2>&1 &
-          
-          # 3. Wait and print the URL from the log
-          echo "[*] Initializing Tunnel..."
-          for i in {1..30}; do
-            if grep -q "READY" tunnel.log; then
-              cat tunnel.log
-              break
-            fi
-            sleep 2
-          done
-          
-          # 4. Start Discovery Scanner
-          echo "[*] Scanner active. Toggle your iPhone VPN now."
-          for i in {1..50}; do
-            sudo netmuxd --host 10.10.10.1 &
-            if python3 scripts/discovery.py; then
-              echo "[***] SUCCESS: UDID Captured."
-              exit 0
-            fi
-            sleep 6
-          done
-          echo "[!] Timeout: No device detected."
-          exit 1
+          # The engine handles VPN, Tunnel, and Discovery in one go
+          sudo python3 scripts/engine.py
