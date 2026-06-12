@@ -7,11 +7,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      - name: Setup Environment
+      - name: Setup Tools
         run: |
           sudo apt-get update
           sudo apt-get install -y libimobiledevice-utils jq curl socat strongswan
-          
           curl -L -o netmuxd https://github.com/jkcoxson/netmuxd/releases/download/v0.1.4/x86_64-linux-netmuxd
           sudo mv netmuxd /usr/local/bin/
           sudo chmod +x /usr/local/bin/netmuxd
@@ -19,56 +18,18 @@ jobs:
       - name: Start VPN Server
         run: sudo bash scripts/setup_vpn.sh
 
-      - name: Start Tunnel
+      - name: Start Tunnel Manager
         run: |
-          echo "[*] Attempting to start Pinggy tunnel..."
-          # Start Pinggy TCP tunnel. -tt forces a TTY which Pinggy sometimes needs to output the URL.
-          ssh -tt -o StrictHostKeyChecking=no -o ServerAliveInterval=30 -R0:localhost:5000 tcp@a.pinggy.io > tunnel.log 2>&1 &
-          
-          echo "[*] Waiting for tunnel to initialize..."
-          for i in {1..12}; do
-            sleep 5
-            # Broad grep for the link
-            URL=$(grep -oE "[a-zA-Z0-9.-]+\.pinggy\.link:[0-9]+" tunnel.log | head -n 1)
-            if [ ! -z "$URL" ]; then
-              echo "[+] Tunnel established!"
-              break
-            fi
-            echo "[-] Still waiting... ($((i*5))s)"
-          done
-
-          if [ -z "$URL" ]; then
-            echo "[!] Pinggy failed. Trying fallback tunnel (localhost.run)..."
-            ssh -o StrictHostKeyChecking=no -R 0:localhost:5000 nokey@localhost.run > tunnel.log 2>&1 &
-            sleep 15
-            URL=$(grep -oE "[a-zA-Z0-9.-]+\.lhr\.life:[0-9]+" tunnel.log | head -n 1 || grep -oE "[a-zA-Z0-9.-]+\.localhost\.run:[0-9]+" tunnel.log | head -n 1)
-          fi
-
-          if [ -z "$URL" ]; then
-            echo "[!!!] CRITICAL ERROR: Could not get a tunnel URL. Check logs below:"
-            cat tunnel.log
-            exit 1
-          fi
-
-          # Start the TCP-to-UDP bridge for the VPN
+          # Start the TCP-to-UDP bridge in the background
           sudo socat TCP4-LISTEN:5000,fork UDP4:localhost:500 &
-          
-          CLEAN_HOST=$(echo $URL | cut -d: -f1)
-          PORT=$(echo $URL | cut -d: -f2)
-
-          echo "--------------------------------------------------"
-          echo "🚀 VPN IS LIVE!"
-          echo "SERVER: $CLEAN_HOST"
-          echo "PORT (if requested): $PORT"
-          echo "--------------------------------------------------"
-          echo "REMOTE ID: @sideloadly-runner"
-          echo "LOCAL ID: @client"
-          echo "SHARED SECRET: sideloadly123"
-          echo "--------------------------------------------------"
+          # Run the Python manager to handle SSH and URL capture
+          python3 scripts/tunnel_manager.py
 
       - name: Discovery Loop
         run: |
+          # Start netmuxd scanning the virtual VPN subnet
           for i in {1..10}; do
             sudo netmuxd --host 10.10.10.$i &
           done
+          # Wait for device connection
           python3 scripts/discovery.py
