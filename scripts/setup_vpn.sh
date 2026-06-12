@@ -18,9 +18,17 @@ conn sideloadly
     rightid=@client
     rightsourceip=10.10.10.0/24
     auto=add
-    ike=aes256-sha256-modp2048!
-    esp=aes256-sha256!
+    # NAT-T and Fragmentation
     forceencaps=yes
+    fragmentation=yes
+    mobike=yes
+    # Aggressive Ciphers for iPhone compatibility
+    ike=aes256-sha256-modp2048,aes128-sha1-modp1024!
+    esp=aes256-sha256,aes128-sha1!
+    # Dead Peer Detection
+    dpdaction=restart
+    dpddelay=30s
+    dpdtimeout=120s
 VPN_CONF
 
 sudo cat <<VPN_SEC > /etc/ipsec.secrets
