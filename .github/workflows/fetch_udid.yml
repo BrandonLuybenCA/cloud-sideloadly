@@ -21,11 +21,23 @@ jobs:
           echo "deb https://ngrok-agent.s3.amazonaws.com buster main" | sudo tee /etc/apt/sources.list.d/ngrok.list
           sudo apt update && sudo apt install ngrok
           ngrok config add-authtoken 3F04f0qQaW68FVs9RAmoV0urkni_4ss21AMnPXEEEZq6GZw6t
+          # We need to forward both 500 and 4500 if possible, but for IKEv2 manual PSK, 500 usually suffices to start
           ngrok tcp 500 --log=stdout > ngrok.log &
           sleep 10
           NGROK_URL=$(curl -s http://localhost:4040/api/tunnels | jq -r '.tunnels[0].public_url')
+          CLEAN_URL=$(echo $NGROK_URL | sed 's/tcp:\/\///')
+          HOST=$(echo $CLEAN_URL | cut -d: -f1)
+          
           echo "--------------------------------------------------"
-          echo "VPN ADDRESS: $NGROK_URL"
+          echo "STEP 1: OPEN IPHONE SETTINGS > VPN > ADD CONFIG"
+          echo "TYPE: IKEv2"
+          echo "DESCRIPTION: Sideloadly"
+          echo "SERVER: $HOST"
+          echo "REMOTE ID: @sideloadly-runner"
+          echo "LOCAL ID: @client"
+          echo "USER AUTHENTICATION: None"
+          echo "MACHINE AUTHENTICATION: Shared Secret"
+          echo "SHARED SECRET: sideloadly123"
           echo "--------------------------------------------------"
 
       - name: Discovery
