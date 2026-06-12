@@ -17,4 +17,4 @@ jobs:
       - name: Run Engine
         run: |
           # The engine handles VPN, Tunnel, and Discovery in one go
-          sudo python3 scripts/engine.py
+          sudo python3 -u scripts/engine.py
