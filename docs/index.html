@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cloud Sideloadly Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/daisyui@3.1.0/dist/full.css" rel="stylesheet" type="text/css" />
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="p-6">
+    <div class="max-w-md mx-auto">
+        <h1 class="text-3xl font-bold mb-6">Cloud Sideloadly (REBUILT)</h1>
+        <div class="form-control space-y-4">
+            <input type="text" id="apple_id" placeholder="Apple ID Email" class="input input-bordered w-full" />
+            <input type="text" id="ipa_url" placeholder="IPA URL" class="input input-bordered w-full" />
+            <div class="divider">Stealth Options</div>
+            <input type="text" id="fake_name" placeholder="Fake Name (e.g. Calculator)" class="input input-bordered w-full" />
+            <button class="btn btn-primary w-full" onclick="launch()">Launch Sideload Engine</button>
+        </div>
+    </div>
+</body>
+</html>

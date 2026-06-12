@@ -1,0 +1,40 @@
+name: Cloud Sideloadly PROD
+on:
+  workflow_dispatch:
+    inputs:
+      apple_id:
+        description: 'Apple ID Email'
+        required: true
+      ipa_url:
+        description: 'Direct IPA Link'
+        required: true
+      fake_name:
+        description: 'Fake App Name'
+        required: false
+
+jobs:
+  sideload:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Setup Environment
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y zsign libimobiledevice-utils ideviceinstaller
+      - name: Install Cloudflare WARP
+        run: |
+          curl -fsSL https://pkg.cloudflareclient.com/pubkey.gpg | sudo gpg --yes --dearmor --output /usr/share/keyrings/cloudflare-warp-archive-keyring.gpg
+          echo "deb [arch=amd64 signed-by=/usr/share/keyrings/cloudflare-warp-archive-keyring.gpg] https://pkg.cloudflareclient.com/ focal main" | sudo tee /etc/apt/sources.list.d/cloudflare-client.list
+          sudo apt-get update && sudo apt-get install cloudflare-warp -y
+          warp-cli --accept-tos register
+          warp-cli --accept-tos connect
+      - name: Setup Ngrok
+        run: |
+          curl -s https://ngrok-agent.s3.amazonaws.com/ngrok.asc | sudo tee /etc/apt/trusted.gpg.d/ngrok.asc >/dev/null
+          echo "deb https://ngrok-agent.s3.amazonaws.com buster main" | sudo tee /etc/apt/sources.list.d/ngrok.list
+          sudo apt update && sudo apt install ngrok
+          ngrok config add-authtoken 3F04f0qQaW68FVs9RAmoV0urkni_4ss21AMnPXEEEZq6GZw6t
+          ngrok tcp 500 &
+      - name: Sign & Deploy
+        run: |
+          python3 scripts/sign_and_deploy.py --ipa "${{ github.event.inputs.ipa_url }}" --name "${{ github.event.inputs.fake_name }}" --id "com.stealth.app"
