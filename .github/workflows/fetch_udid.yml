@@ -7,49 +7,45 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      - name: Setup Tools
+      - name: Setup Environment
         run: |
           sudo apt-get update
-          sudo apt-get install -y libimobiledevice-utils strongswan jq curl
+          sudo apt-get install -y libimobiledevice-utils jq curl socat
           
-          # Install netmuxd
+          # Install netmuxd binary
           curl -L -o netmuxd https://github.com/jkcoxson/netmuxd/releases/download/v0.1.4/x86_64-linux-netmuxd
           sudo mv netmuxd /usr/local/bin/
           sudo chmod +x /usr/local/bin/netmuxd
           
-      - name: Start VPN
+      - name: Start VPN Server
         run: sudo bash scripts/setup_vpn.sh
 
-      - name: Start Pinggy Tunnel
+      - name: Start Pinggy Bridge
         run: |
-          # Start Pinggy TCP tunnel for VPN (port 500)
-          # We use a temporary file to capture the URL
-          ssh -o StrictHostKeyChecking=no -R0:localhost:500 tcp@a.pinggy.io > pinggy.log 2>&1 &
-          sleep 15
-          # Capture the assigned URL from the log
+          # Start Pinggy TCP tunnel on a local port
+          ssh -o StrictHostKeyChecking=no -R0:localhost:5000 tcp@a.pinggy.io > pinggy.log 2>&1 &
+          sleep 10
+          
+          # Extract URL
           PINGGY_URL=$(grep -oE "[a-z0-9]+\.a\.pinggy\.link:[0-9]+" pinggy.log | head -n 1)
           
-          if [ -z "$PINGGY_URL" ]; then
-            echo "Failed to get Pinggy URL. Retrying with alternative capture..."
-            # Try capturing from full log if short grep fails
-            PINGGY_URL=$(cat pinggy.log | grep -o '.*\.a\.pinggy\.link:[0-9]*')
-          fi
-
+          # Bridge Pinggy TCP traffic to local UDP VPN port 500
+          sudo socat TCP4-LISTEN:5000,fork UDP4:localhost:500 &
+          
           echo "--------------------------------------------------"
-          echo "STEP 1: OPEN IPHONE SETTINGS > VPN > ADD CONFIG"
-          echo "TYPE: IKEv2"
-          echo "DESCRIPTION: Sideloadly"
+          echo "VPN STATUS: READY"
           echo "SERVER: $PINGGY_URL"
           echo "REMOTE ID: @sideloadly-runner"
           echo "LOCAL ID: @client"
-          echo "USER AUTHENTICATION: None"
-          echo "MACHINE AUTHENTICATION: Shared Secret"
           echo "SHARED SECRET: sideloadly123"
           echo "--------------------------------------------------"
 
-      - name: Discovery
+      - name: Discovery Loop
         run: |
-          for i in {1..5}; do
+          # Start netmuxd scanning the virtual VPN subnet
+          for i in {1..10}; do
             sudo netmuxd --host 10.10.10.$i &
           done
+          
+          # Give the connection time to establish
           python3 scripts/discovery.py

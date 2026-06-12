@@ -1,27 +1,33 @@
 #!/bin/bash
-# IKEv2 Setup with PSK (Pre-Shared Key)
-sudo apt-get update && sudo apt-get install -y strongswan libcharon-extra-plugins
+set -e
+echo "[*] Installing StrongSwan and Socat..."
+sudo apt-get update -y
+sudo apt-get install -y strongswan libcharon-extra-plugins socat
 
-# Configure VPN with PSK
+echo "[*] Configuring StrongSwan..."
 sudo cat <<VPN_CONF > /etc/ipsec.conf
 config setup
     charondebug="ike 1, knl 1, cfg 1"
 
 conn sideloadly
     keyexchange=ikev2
+    authby=psk
     left=%any
     leftid=@sideloadly-runner
-    leftsubnet=10.10.10.0/24
+    leftsubnet=0.0.0.0/0
     right=%any
     rightid=@client
-    rightsourceip=10.10.10.0/24
-    authby=secret
+    rightaddresspool=10.10.10.0/24
     auto=add
+    ike=aes256-sha256-modp2048!
+    esp=aes256-sha256!
 VPN_CONF
 
-# Set the Shared Secret
-sudo bash -c 'echo "@sideloadly-runner @client : PSK \"sideloadly123\"" > /etc/ipsec.secrets'
+sudo cat <<VPN_SEC > /etc/ipsec.secrets
+: PSK "sideloadly123"
+VPN_SEC
 
-# Start VPN
-sudo ipsec restart
-echo "[*] VPN Server is Live with PSK: sideloadly123"
+echo "[*] Starting StrongSwan service..."
+sudo systemctl restart strongswan-starter
+sleep 3
+sudo ipsec statusall || true
