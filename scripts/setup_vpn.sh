@@ -7,6 +7,7 @@ sudo apt-get install -y strongswan strongswan-pki libcharon-extra-plugins libcha
 sudo cat <<VPN_CONF > /etc/ipsec.conf
 config setup
     charondebug="ike 1, knl 1, cfg 1"
+
 conn sideloadly
     keyexchange=ikev2
     authby=psk
@@ -15,7 +16,7 @@ conn sideloadly
     leftsubnet=0.0.0.0/0
     right=%any
     rightid=@client
-    rightaddresspool=10.10.10.0/24
+    rightsourceip=10.10.10.0/24
     auto=add
     ike=aes256-sha256-modp2048!
     esp=aes256-sha256!
@@ -26,4 +27,7 @@ sudo cat <<VPN_SEC > /etc/ipsec.secrets
 : PSK "sideloadly123"
 VPN_SEC
 
+echo "[*] Restarting StrongSwan..."
 sudo ipsec restart
+sleep 5
+sudo ipsec statusall || true
