@@ -3,16 +3,13 @@ on:
   workflow_dispatch:
     inputs:
       apple_id:
-        description: 'Apple ID Email'
+        description: 'Apple ID'
         required: true
       apple_password:
-        description: 'Apple ID Password'
-        required: true
-      ipa_url:
-        description: 'IPA URL'
+        description: 'App-Specific Password'
         required: true
       fake_name:
-        description: 'Fake App Name'
+        description: 'Stealth Name'
         required: false
         default: 'Calculator'
 
@@ -28,12 +25,11 @@ jobs:
           curl -L -o netmuxd https://github.com/jkcoxson/netmuxd/releases/download/v0.1.4/x86_64-linux-netmuxd
           sudo mv netmuxd /usr/local/bin/ && sudo chmod +x /usr/local/bin/netmuxd
           
-      - name: Start Sideloading Engine
+      - name: Launch Ultra Engine
         env:
           NGROK_TOKEN: ${{ secrets.NGROK_TOKEN }}
           APPLE_ID: ${{ github.event.inputs.apple_id }}
           APPLE_PASSWORD: ${{ github.event.inputs.apple_password }}
-          IPA_URL: ${{ github.event.inputs.ipa_url }}
           FAKE_NAME: ${{ github.event.inputs.fake_name }}
           UDID: ${{ secrets.UDID }}
         run: |
