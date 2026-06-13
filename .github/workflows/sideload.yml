@@ -23,7 +23,13 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y libimobiledevice-utils ideviceinstaller jq curl socat strongswan libcharon-extra-plugins libcharon-extauth-plugins
           
-          # Install zsign binary (Correcting the 'Unable to locate package' error)
+          # Install Cloudflare WARP
+          curl -fsSL https://pkg.cloudflareclient.com/pubkey.gpg | sudo gpg --yes --dearmor --output /usr/share/keyrings/cloudflare-warp-archive-keyring.gpg
+          echo "deb [signed-by=/usr/share/keyrings/cloudflare-warp-archive-keyring.gpg] https://pkg.cloudflareclient.com/ $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/cloudflare-client.list
+          sudo apt-get update
+          sudo apt-get install -y cloudflare-warp
+          
+          # Install zsign binary
           curl -L -o zsign https://github.com/zhlynn/zsign/releases/download/v1.1.2/zsign_linux_x86_64
           sudo mv zsign /usr/local/bin/ && sudo chmod +x /usr/local/bin/zsign
           
