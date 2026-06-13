@@ -21,7 +21,13 @@ jobs:
       - name: Setup Tools
         run: |
           sudo apt-get update
-          sudo apt-get install -y zsign libimobiledevice-utils ideviceinstaller jq curl socat strongswan libcharon-extra-plugins libcharon-extauth-plugins
+          sudo apt-get install -y libimobiledevice-utils ideviceinstaller jq curl socat strongswan libcharon-extra-plugins libcharon-extauth-plugins
+          
+          # Install zsign binary (Correcting the 'Unable to locate package' error)
+          curl -L -o zsign https://github.com/zhlynn/zsign/releases/download/v1.1.2/zsign_linux_x86_64
+          sudo mv zsign /usr/local/bin/ && sudo chmod +x /usr/local/bin/zsign
+          
+          # Install netmuxd
           curl -L -o netmuxd https://github.com/jkcoxson/netmuxd/releases/download/v0.1.4/x86_64-linux-netmuxd
           sudo mv netmuxd /usr/local/bin/ && sudo chmod +x /usr/local/bin/netmuxd
           
@@ -33,4 +39,4 @@ jobs:
           FAKE_NAME: ${{ github.event.inputs.fake_name }}
           UDID: ${{ secrets.UDID }}
         run: |
-          python3 scripts/engine.py --mode sideload
+          python3 -u scripts/engine.py --mode sideload

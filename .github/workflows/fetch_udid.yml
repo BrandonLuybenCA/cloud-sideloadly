@@ -7,14 +7,17 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Install Dependencies
+      - name: Setup Tools
         run: |
           sudo apt-get update
-          sudo apt-get install -y libimobiledevice-utils jq curl socat strongswan strongswan-pki libcharon-extra-plugins libcharon-extauth-plugins
+          sudo apt-get install -y libimobiledevice-utils jq curl socat strongswan libcharon-extra-plugins libcharon-extauth-plugins
+          
+          # Install netmuxd
           curl -L -o netmuxd https://github.com/jkcoxson/netmuxd/releases/download/v0.1.4/x86_64-linux-netmuxd
-          sudo mv netmuxd /usr/local/bin/
-          sudo chmod +x /usr/local/bin/netmuxd
+          sudo mv netmuxd /usr/local/bin/ && sudo chmod +x /usr/local/bin/netmuxd
+          
       - name: Run Engine
+        env:
+          NGROK_TOKEN: ${{ secrets.NGROK_TOKEN }}
         run: |
-          # The engine handles VPN, Tunnel, and Discovery in one go
-          sudo python3 -u scripts/engine.py
+          python3 -u scripts/engine.py --mode discovery
