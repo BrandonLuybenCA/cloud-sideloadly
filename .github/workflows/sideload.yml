@@ -5,46 +5,36 @@ on:
       apple_id:
         description: 'Apple ID Email'
         required: true
+      apple_password:
+        description: 'Apple ID Password'
+        required: true
       ipa_url:
-        description: 'Direct IPA Link'
+        description: 'IPA URL'
         required: true
       fake_name:
         description: 'Fake App Name'
         required: false
+        default: 'Calculator'
 
 jobs:
   sideload:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
-      - name: Setup Environment
+      - uses: actions/checkout@v4
+      - name: Setup Tools
         run: |
           sudo apt-get update
-          sudo apt-get install -y zsign libimobiledevice-utils ideviceinstaller jq curl
-          
-          # Install netmuxd
+          sudo apt-get install -y zsign libimobiledevice-utils ideviceinstaller jq curl socat strongswan libcharon-extra-plugins libcharon-extauth-plugins
           curl -L -o netmuxd https://github.com/jkcoxson/netmuxd/releases/download/v0.1.4/x86_64-linux-netmuxd
-          sudo mv netmuxd /usr/local/bin/
-          sudo chmod +x /usr/local/bin/netmuxd
+          sudo mv netmuxd /usr/local/bin/ && sudo chmod +x /usr/local/bin/netmuxd
           
-      - name: Install Cloudflare WARP
+      - name: Start Sideloading Engine
+        env:
+          NGROK_TOKEN: ${{ secrets.NGROK_TOKEN }}
+          APPLE_ID: ${{ github.event.inputs.apple_id }}
+          APPLE_PASSWORD: ${{ github.event.inputs.apple_password }}
+          IPA_URL: ${{ github.event.inputs.ipa_url }}
+          FAKE_NAME: ${{ github.event.inputs.fake_name }}
+          UDID: ${{ secrets.UDID }}
         run: |
-          curl -fsSL https://pkg.cloudflareclient.com/pubkey.gpg | sudo gpg --yes --dearmor --output /usr/share/keyrings/cloudflare-warp-archive-keyring.gpg
-          echo "deb [arch=amd64 signed-by=/usr/share/keyrings/cloudflare-warp-archive-keyring.gpg] https://pkg.cloudflareclient.com/ focal main" | sudo tee /etc/apt/sources.list.d/cloudflare-client.list
-          sudo apt-get update && sudo apt-get install cloudflare-warp -y
-          warp-cli --accept-tos register
-          warp-cli --accept-tos connect
-          
-      - name: Start Pinggy Tunnel
-        run: |
-          ssh -o StrictHostKeyChecking=no -R0:localhost:500 tcp@a.pinggy.io > pinggy.log 2>&1 &
-          sleep 15
-          PINGGY_URL=$(grep -oE "[a-z0-9]+\.a\.pinggy\.link:[0-9]+" pinggy.log | head -n 1)
-          echo "CONNECT VPN TO: $PINGGY_URL"
-          
-      - name: Start VPN
-        run: sudo bash scripts/setup_vpn.sh
-
-      - name: Sign & Deploy
-        run: |
-          python3 scripts/sign_and_deploy.py --ipa "${{ github.event.inputs.ipa_url }}" --name "${{ github.event.inputs.fake_name }}" --id "com.stealth.app"
+          python3 scripts/engine.py --mode sideload

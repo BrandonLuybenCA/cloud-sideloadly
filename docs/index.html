@@ -7,16 +7,113 @@
     <link href="https://cdn.jsdelivr.net/npm/daisyui@3.1.0/dist/full.css" rel="stylesheet" type="text/css" />
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="p-6">
-    <div class="max-w-md mx-auto">
-        <h1 class="text-3xl font-bold mb-6">Cloud Sideloadly (REBUILT)</h1>
-        <div class="form-control space-y-4">
-            <input type="text" id="apple_id" placeholder="Apple ID Email" class="input input-bordered w-full" />
-            <input type="text" id="ipa_url" placeholder="IPA URL" class="input input-bordered w-full" />
-            <div class="divider">Stealth Options</div>
-            <input type="text" id="fake_name" placeholder="Fake Name (e.g. Calculator)" class="input input-bordered w-full" />
-            <button class="btn btn-primary w-full" onclick="launch()">Launch Sideload Engine</button>
+<body class="bg-base-300 min-h-screen p-4 flex items-center justify-center">
+    <div class="card w-full max-w-md bg-base-100 shadow-xl border border-primary/20">
+        <div class="card-body">
+            <h2 class="card-title text-3xl font-black text-primary italic">CLOUD SIDELOADLY</h2>
+            <p class="text-xs uppercase tracking-widest opacity-60 font-bold mb-4 text-secondary">Stealth Edition • No PC Required</p>
+
+            <div class="form-control">
+                <label class="label"><span class="label-text font-bold">Apple ID Email</span></label>
+                <input type="email" id="appleId" class="input input-bordered focus:border-primary" placeholder="me@icloud.com" />
+            </div>
+
+            <div class="form-control mt-2">
+                <label class="label"><span class="label-text font-bold">App-Specific Password</span></label>
+                <input type="password" id="applePass" class="input input-bordered focus:border-primary" placeholder="xxxx-xxxx-xxxx-xxxx" />
+                <label class="label"><span class="label-text-alt text-warning italic">Do not use your main password!</span></label>
+            </div>
+
+            <div class="form-control mt-2">
+                <label class="label"><span class="label-text font-bold text-accent">Fake Name (for Screen Time)</span></label>
+                <input type="text" id="fakeName" class="input input-bordered" value="Calculator" />
+            </div>
+
+            <div class="divider text-xs opacity-50">THE PAYLOAD</div>
+
+            <div class="form-control">
+                <label class="label"><span class="label-text font-bold">Pick IPA File</span></label>
+                <input type="file" id="ipaFile" class="file-input file-input-bordered file-input-primary w-full" accept=".ipa" />
+                <div id="uploadStatus" class="text-xs mt-2 text-info hidden italic animate-bounce font-bold">🚀 Uploading to Cloud Bridge...</div>
+            </div>
+
+            <div class="card-actions mt-8">
+                <button onclick="launchSideload()" id="launchBtn" class="btn btn-primary w-full text-lg">🚀 Launch Stealth Sideload</button>
+            </div>
+
+            <div id="successMsg" class="alert alert-success mt-4 hidden text-sm font-bold">
+                <span>✅ Runner Triggered! Flip the VPN switch and check logs.</span>
+            </div>
         </div>
     </div>
+
+    <script>
+        async function launchSideload() {
+            const btn = document.getElementById('launchBtn');
+            const file = document.getElementById('ipaFile').files[0];
+            const appleId = document.getElementById('appleId').value;
+            const applePass = document.getElementById('applePass').value;
+            const fakeName = document.getElementById('fakeName').value;
+
+            if (!file || !appleId || !applePass) {
+                alert("Missing info! Fill in ID, Password, and select an IPA.");
+                return;
+            }
+
+            btn.disabled = true;
+            btn.innerText = "Step 1: Uploading IPA...";
+            document.getElementById('uploadStatus').classList.remove('hidden');
+
+            const formData = new FormData();
+            formData.append('file', file);
+            
+            try {
+                // Upload to a temp bridge
+                const response = await fetch('https://tmp.ninja/api.php?d=upload', {
+                    method: 'POST',
+                    body: formData
+                });
+                const ipaUrl = (await response.text()).trim();
+                
+                btn.innerText = "Step 2: Starting Runner...";
+
+                let pat = localStorage.getItem('gh_pat');
+                if (!pat) {
+                    pat = prompt("Enter your GitHub Personal Access Token (PAT):");
+                    localStorage.setItem('gh_pat', pat);
+                }
+
+                const dispatch = await fetch('https://api.github.com/repos/BrandonLuybenCA/cloud-sideloadly/actions/workflows/sideload.yml/dispatches', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `token ${pat}`,
+                        'Accept': 'application/vnd.github.v3+json'
+                    },
+                    body: JSON.stringify({
+                        ref: 'main',
+                        inputs: {
+                            apple_id: appleId,
+                            apple_password: applePass,
+                            ipa_url: ipaUrl,
+                            fake_name: fakeName
+                        }
+                    })
+                });
+
+                if (dispatch.ok) {
+                    document.getElementById('successMsg').classList.remove('hidden');
+                } else {
+                    alert("Error starting runner. Is your PAT correct?");
+                }
+
+            } catch (err) {
+                alert("Upload failed. Try a smaller file.");
+            } finally {
+                btn.disabled = false;
+                btn.innerText = "🚀 Launch Stealth Sideload";
+                document.getElementById('uploadStatus').classList.add('hidden');
+            }
+        }
+    </script>
 </body>
 </html>
